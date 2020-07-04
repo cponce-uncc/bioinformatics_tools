@@ -1,0 +1,6 @@
+.correctedReads.fasta,Corrected Reads,0
+.trimmedReads.fasta,Trimmed Reads,0
+.pseudomol,Pseudomolecule,0
+.contigs.fasta,Canu,1
+.lay.utg.,smartdenovo,0
+.wtdbg.ctg.fa,WTDBG,0
