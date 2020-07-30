@@ -1,8 +1,5 @@
 """
-This program analyzes the quality of .fasta files and prints the results out. To use this program, edit the
-corresponding 'targeted_extensions.csv' file. Include the extension and file type name, as well as a 0 or 1 in the csv.
-A 0 means that an analysis will not be run on the file type. A 1 means that the program will find every file of that
-type in the local directory and perform the analysis on it. The analysis includes the following metrics:
+This program analyzes the quality of .fasta files and prints the results out. The analysis includes the following metrics:
     - Number of contigs
     - BP count
     - Largest contig (BP)
@@ -110,6 +107,7 @@ def print_results(file_path):
           f"'C' count: {c_count }\n"
           f"'N' count: {(n_count / num_bp) * 100 }\n"
           f"Total count: {a_count + t_count + g_count + c_count + n_count}\n")
+
 
 def graph_contig_sizes(file_path, graph_type='bar'):
     contig_lengths = []
