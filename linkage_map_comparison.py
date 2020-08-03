@@ -3,7 +3,7 @@ import csv
 
 """I KNOW IT SAID 78"""
 
-threshold_hits_file = 'fifteen_percent_threshold.csv'
+threshold_hits_file = 'rewrite_test.csv'
 linkage_maps_file = 'ChineseAmber_Linkage_Map.csv'
 
 
@@ -44,18 +44,29 @@ for line in threshold_hits:
 
     if line not in threshold_contigs:  # Only add one of each contig to represented contig list
         threshold_contigs.append(line)
+
 threshold_contigs.pop(0)  # Remove header from data
 threshold_contigs = set(threshold_contigs)  # Cast to set to allow for use of intersection method
 
-common_contigs = threshold_contigs.intersection(linkage_contigs)  # Find shared contigs
+common_contigs = list(threshold_contigs.intersection(linkage_contigs))  # Find shared contigs
 
-shared_threshold_contigs = threshold_contigs.intersection(common_contigs)  # Remove elements specific to set
-shared_linkage_contigs = linkage_contigs.intersection(common_contigs)  # Remove elements specific to set
+threshold_contigs = list(threshold_contigs)
+linkage_contigs = list(linkage_contigs)
+
+print(len(threshold_contigs))
+
+for entry in threshold_contigs:
+    if entry not in common_contigs:
+        threshold_contigs.remove(entry)
+
+for entry in linkage_contigs:
+    if entry not in common_contigs:
+        linkage_contigs.remove(entry)
 
 # Print results
 print(f'There are {len(common_contigs)} contigs shared between the linkage map and the threshold file.')
-print(shared_linkage_contigs)
-print(shared_threshold_contigs)
+print(len(linkage_contigs))
+print(len(threshold_contigs))
 
 
-# convert_to_csv('Chinese_Amber_Results_onemap.txt', 'ChineseAmber_Linkage_Map.csv')
+convert_to_csv('Chinese_Amber_results_onemap.txt', 'ChineseAmber_Linkage_Map.csv')

@@ -1,8 +1,7 @@
 """
-This program compares Mummer .coords files to the .fasta files they originated from. It will check for contig
-representation in the .coords files, and find the best match (Highest query coverage) for each contig represented in the
-.coords file. The results can be print out or be made into a CSV table. To use this program, use create_csv() or
-print_results() and pass the filenames as arguments.
+This program processes MUMmer .coords files. It will take the best hit (based on query coverage %) for each contig,
+and then sort the data by chromosome starting position (S1 column), and output the results as a .csv containing
+the contig ID, chromosome starting position, and chromosome number of the hit.
 
 Written by Cristian Ponce during Summer 2020 for the Cooper Lab (University of North Carolina, Charlotte)
 at the North Carolina Research Campus.
@@ -44,6 +43,7 @@ def get_coords_info(file_path, threshold=0.0):
             chromosome_coordinate_data = separated_contents[0].split(' ')
 
             # Eliminate blank data in coordinate information
+            s1_data = ''  # Create variable for s1 data to prevent reference before assignment warning
             for entry in chromosome_coordinate_data:
                 if entry != '':
                     s1_data = entry  # S1 data, represents starting coordinate of match with respect to chr
@@ -62,15 +62,28 @@ def get_coords_info(file_path, threshold=0.0):
 
     for entry in all_query_hits:
 
-        contig_name, query_coverage, s1_data, chromosome_num = entry
+        # Unpack values
+        contig_name = entry[0]
+        query_coverage = float(entry[1])
+        s1_data = int(entry[2])
+        chromosome_num = int(entry[3])
 
-        if contig_name in best_hits.keys():  # Checks if contig is already represented in best hits dictionary
+        if query_coverage > threshold:  # Only writes contig to best_hits dictionary if threshold is reached
 
-            if float(best_hits.get(contig_name)[0]) < float(query_coverage):  # Update dictionary if entry is greater
-                best_hits.update({contig_name: [s1_data, chromosome_num]})
+            if contig_name in best_hits.keys():  # Checks if contig is already represented in best hits dictionary
 
-        else:  # Put entry into dictionary if contig has no entry yet
-            best_hits.update({contig_name: [s1_data, chromosome_num]})
+                if best_hits.get(contig_name)[0] < query_coverage:  # Update dict if entry is greater
+                    print("UPDATE REGISTERED")
+                    best_hits.update({contig_name: [query_coverage, s1_data, chromosome_num]})
+
+            else:  # Put entry into dictionary if contig has no entry yet
+                best_hits.update({contig_name: [query_coverage, s1_data, chromosome_num]})
+
+    # Remove all query coverage data before passing dictionary back
+    for contig in best_hits:
+        new_information = best_hits.get(contig)
+        new_information.pop(0)  # Remove query coverage data
+        best_hits.update({contig: new_information})
 
     return best_hits
 
@@ -101,8 +114,6 @@ def create_csv(new_file_name, contig_data):
         file.close()
 
 
-filtered_results = get_coords_info('ChineseAmber.coords', 0.0)
-print(filtered_results)
+filtered_results = get_coords_info('ChineseAmber.coords')
 sorted_coords = sort_best_hit_data(filtered_results)
-print(sorted_coords)
-create_csv('rewrite_test.csv', sorted_coords)
+create_csv('unsorted_test.csv', sorted_coords)
