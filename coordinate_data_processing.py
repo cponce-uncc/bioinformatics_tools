@@ -49,10 +49,18 @@ def get_coords_info(file_path, threshold=0.0):
                     s1_data = entry  # S1 data, represents starting coordinate of match with respect to chr
                     break  # Stop search at first non-blank entry
 
-            # Get chromosome tag
-            chromosome_num = separated_contents[6] \
-                .split('\t')[0] \
-                .split('_')[1]
+            # Get chromosome tag (RESOLVE ISSUE DURING CALL)
+            if '_' in separated_contents[6]:
+                chromosome_num = separated_contents[6] \
+                    .split('\t')[0] \
+                    .split('_')[1]
+            else:  # Work here
+                chromosome_num = separated_contents[6] \
+                    .split(' ')[1] \
+                    .split('\t')[0] \
+
+
+                print(f'num {chromosome_num} end')
 
             # coordinate_info.append([s1_data, chromosome_num])
 
@@ -73,19 +81,27 @@ def get_coords_info(file_path, threshold=0.0):
             if contig_name in best_hits.keys():  # Checks if contig is already represented in best hits dictionary
 
                 if best_hits.get(contig_name)[0] < query_coverage:  # Update dict if entry is greater
-                    print("UPDATE REGISTERED")
                     best_hits.update({contig_name: [query_coverage, s1_data, chromosome_num]})
 
             else:  # Put entry into dictionary if contig has no entry yet
                 best_hits.update({contig_name: [query_coverage, s1_data, chromosome_num]})
 
-    # Remove all query coverage data before passing dictionary back
-    for contig in best_hits:
-        new_information = best_hits.get(contig)
-        new_information.pop(0)  # Remove query coverage data
-        best_hits.update({contig: new_information})
-
     return best_hits
+
+
+def update_best_hits(best_hits, linkage_file_path):
+    # Import linkage map file
+    linkage_coordinate_info = []
+    with open(linkage_file_path, 'r') as file:
+        for line in file:
+            linkage_coordinate_info.append(line)
+
+    # Override best hits file
+    for entry in linkage_coordinate_info:
+        contig_name, query_coverage, s1_data, chromosome_num = entry.split(',')
+        best_hits.update({contig_name: [float(query_coverage), int(s1_data), int(chromosome_num)]})
+
+        return best_hits
 
 
 def sort_best_hit_data(best_hit_data):
@@ -95,25 +111,29 @@ def sort_best_hit_data(best_hit_data):
     index = 0
 
     while index < len(best_hit_contigs):
-        all_data.append([best_hit_contigs[index], best_hit_positions[index][0], best_hit_positions[index][1]])
+        all_data.append([best_hit_contigs[index], best_hit_positions[index][0], best_hit_positions[index][1], best_hit_positions[index][2]])
         index += 1
 
-    sorted_data = sorted(all_data, key=lambda x: (float(x[2]), float(x[1])))
+    sorted_data = sorted(all_data, key=lambda x: (float(x[3]), float(x[2])))
 
     return sorted_data
 
 
 def create_csv(new_file_name, contig_data):
+    print('your data', contig_data)
     with open(new_file_name, 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Contig Name", "% Query Coverage"])
 
         for entry in contig_data:
+            print(entry)
             writer.writerow(entry)
 
         file.close()
 
 
 filtered_results = get_coords_info('ChineseAmber.coords')
-sorted_coords = sort_best_hit_data(filtered_results)
-create_csv('unsorted_test.csv', sorted_coords)
+updated_results = update_best_hits(filtered_results, 'linkage_map_s1_data.csv')
+sorted_coords = sort_best_hit_data(updated_results)
+print(sorted_coords)
+create_csv('ChineseAmber_sorted.csv', sorted_coords)
