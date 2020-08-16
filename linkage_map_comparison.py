@@ -1,9 +1,8 @@
 # NOTE: I only found a single contig (tig00002499) at the 70% threshold level. 15% yielded better results.
 import csv
+import difflib
 
-"""I KNOW IT SAID 78"""
-
-threshold_hits_file = 'rewrite_test.csv'
+threshold_hits_file = 'sorted_test_plus_linkage.csv'
 linkage_maps_file = 'ChineseAmber_Linkage_Map.csv'
 
 
@@ -15,58 +14,70 @@ def convert_to_csv(old_file_path, new_file_path):
 
         for line in old_file:
             old_content = line.split(' ')
-            old_content[1] = old_content[1].replace('S', 'tig')
-            old_content[2] = old_content[2].replace('\n', '')
-            writer.writerow(old_content)
+
+            new_content = [old_content[1].replace('S', 'tig')
+                               .split('_')[0], old_content[1].replace('S', 'tig') \
+                               .split('_')[1], old_content[0]]
+
+            writer.writerow(new_content)
 
     old_file.close()  # Close old .txt file
     file.close()  # Close new .csv file
 
 
+def get_common_contigs(list_one, list_two):
+    list_one = set(list_one)
+    list_two = set(list_two)
+    return list_one.intersection(list_two)
+
+
 threshold_hits = list(open(threshold_hits_file, 'r'))
 linkage_map = list(open(linkage_maps_file, 'r'))
 
-threshold_contigs = []
+old_threshold_contigs = []
 linkage_contigs = []
 
 # Extract all contigs represented in linkage map
 for line in linkage_map:
     line = line.replace("\n", '') \
-            .split(",")[1] \
-            .split("_")[0]
-    linkage_contigs.append(line)
-linkage_contigs = set(linkage_contigs)  # Cast to set to allow for use of intersection method
+            .split(",")[0]
+
+    if line not in linkage_contigs:
+        linkage_contigs.append(line)
 
 # Extract all contigs represented in threshold .coords file
 for line in threshold_hits:
     line = line.replace("\n", '') \
         .split(",")[0] \
 
-    if line not in threshold_contigs:  # Only add one of each contig to represented contig list
-        threshold_contigs.append(line)
+    if line not in old_threshold_contigs:  # Only add one of each contig to represented contig list
+        old_threshold_contigs.append(line)
 
-threshold_contigs.pop(0)  # Remove header from data
-threshold_contigs = set(threshold_contigs)  # Cast to set to allow for use of intersection method
+old_threshold_contigs.pop(0)  # Remove header from data
 
-common_contigs = list(threshold_contigs.intersection(linkage_contigs))  # Find shared contigs
 
-threshold_contigs = list(threshold_contigs)
-linkage_contigs = list(linkage_contigs)
+new_threshold_contigs = []
 
-print(len(threshold_contigs))
+for entry in old_threshold_contigs:
+    if entry in linkage_contigs:
+        new_threshold_contigs.append(entry)
 
-for entry in threshold_contigs:
-    if entry not in common_contigs:
-        threshold_contigs.remove(entry)
+with open('new_common_contig_order.csv', 'w', newline='') as file:
+    x = 0
+    y = 0
+    writer = csv.writer(file)
+    writer.writerow(['position', '.coords contigs', 'linkage contigs'])
 
-for entry in linkage_contigs:
-    if entry not in common_contigs:
-        linkage_contigs.remove(entry)
+    while x < len(new_threshold_contigs):
+        writer.writerow([x + 1, new_threshold_contigs[x], linkage_contigs[x]])
+        if new_threshold_contigs[x] == linkage_contigs[x]:
+            y += 1
+        x += 1
 
-# Print results
-print(f'There are {len(common_contigs)} contigs shared between the linkage map and the threshold file.')
-print(len(linkage_contigs))
-print(len(threshold_contigs))
+print(linkage_contigs)
+print(new_threshold_contigs)
+sequence_matcher = difflib.SequenceMatcher(None, linkage_contigs, new_threshold_contigs)
+print(f"Similarity in order between updated sorted contigs\nand linkage map contigs: {sequence_matcher.ratio() * 100}%")
 
 
 convert_to_csv('Chinese_Amber_results_onemap.txt', 'ChineseAmber_Linkage_Map.csv')
