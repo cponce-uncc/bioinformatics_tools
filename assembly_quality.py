@@ -6,6 +6,7 @@ This program analyzes the quality of .fasta files and prints the results out. Th
     - N50, N90, L50, and L90 statistics
     - Individual base counts and ratios
 
+To use the program
 Written by Cristian Ponce during Summer 2020 for the Cooper Lab (University of North Carolina, Charlotte)
 at the North Carolina Research Campus.
 """
@@ -105,7 +106,7 @@ def print_results(file_path):
           f"'T' count: {t_count }\n"
           f"'G' count: {g_count }\n"
           f"'C' count: {c_count }\n"
-          f"'N' count: {(n_count / num_bp) * 100 }\n"
+          f"'N' count: {(n_count)}\n"
           f"Total count: {a_count + t_count + g_count + c_count + n_count}\n")
 
 
@@ -138,11 +139,11 @@ def graph_contig_sizes(file_path, graph_type='bar'):
 if __name__ == "__main__":
 
     # Get targeted files through targeted_extensions.csv file
-    targeted_files = get_targeted_files()
+    targeted_files = {'.pseudomol': 'MUMmer'}
 
     # Analyze each file in the .csv file
     for extension in targeted_files.keys():
         files = file_browser(extension)
 
-        for file in files:  # Note: O(n^2) time complexity
+        for file in files:
             print_results(file)
