@@ -49,22 +49,29 @@ def get_coords_info(file_path, threshold=0.0):
                     s1_data = entry  # S1 data, represents starting coordinate of match with respect to chr
                     break  # Stop search at first non-blank entry
 
+            print(separated_contents[6])
             # Get chromosome tag (RESOLVE ISSUE DURING CALL)
             if '_' in separated_contents[6]:
                 chromosome_num = separated_contents[6] \
                     .split('\t')[0] \
                     .split('_')[1]
+
             else:  # Work here
                 chromosome_num = separated_contents[6] \
                     .split(' ')[1] \
                     .split('\t')[0] \
+                    .split('r')[1]
+
+                if chromosome_num.isnumeric() and (int(chromosome_num) != 10):
+                    chromosome_num = chromosome_num.replace('0', '')
 
 
                 print(f'num {chromosome_num} end')
 
             # coordinate_info.append([s1_data, chromosome_num])
 
-            all_query_hits.append([contig_name, query_coverage, s1_data, chromosome_num])
+            if chromosome_num.isnumeric():
+                all_query_hits.append([contig_name, query_coverage, s1_data, chromosome_num])
 
         line_no += 1  # Iterate line counter
 
@@ -133,7 +140,7 @@ def create_csv(new_file_name, contig_data):
 
 
 filtered_results = get_coords_info('ChineseAmber.coords')
-updated_results = update_best_hits(filtered_results, 'linkage_map_s1_data.csv')
-sorted_coords = sort_best_hit_data(updated_results)
+# updated_results = update_best_hits(filtered_results, 'linkage_map_s1_data.csv')
+sorted_coords = sort_best_hit_data(filtered_results)
 print(sorted_coords)
-create_csv('ChineseAmber_sorted.csv', sorted_coords)
+create_csv('Rio_ChineseAmber_sorted.csv', sorted_coords)
