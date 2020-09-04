@@ -1,7 +1,8 @@
 import csv
 import difflib
 
-threshold_hits_file_one = "tx2783_ChineseAmber_sorted.csv"
+# Files to compare
+threshold_hits_file_one = "chunked_contigs_only.csv"
 threshold_hits_file_two = "tx463_ChineseAmber_sorted.csv"
 threshold_hits_file_three = 'Rio_ChineseAmber_sorted.csv'
 threshold_hits_file_four = 'ChineseAmber_sorted_nucleotide_coverage.csv'
@@ -83,8 +84,8 @@ def write_to_csv(list_one, list_two, new_file_name):
 
 
 # Extract the data from each file and filter the data to only represent contigs common between both sources
-linkage_contigs = extract_coords_contigs(threshold_hits_file_three)
-threshold_contigs = extract_coords_contigs(threshold_hits_file_four)
+linkage_contigs = extract_coords_contigs(threshold_hits_file_one)
+threshold_contigs = extract_coords_contigs(linkage_maps_file)
 new_threshold_contigs, linkage_contigs = get_common_contigs(threshold_contigs, linkage_contigs)
 
 # Create SequenceMatcher object to compare two contig orders and print results
@@ -92,5 +93,5 @@ sequence_matcher = difflib.SequenceMatcher(None, linkage_contigs, new_threshold_
 print(f"Similarity in order between updated sorted contigs\nand linkage map contigs: {sequence_matcher.ratio() * 100}%")
 
 # Create a csv with the results of the order comparison
-write_to_csv(linkage_contigs, new_threshold_contigs, 'Rio_ChineseAmber_comparison.csv')
+#write_to_csv(linkage_contigs, new_threshold_contigs, 'Rio_ChineseAmber_comparison.csv')
 
