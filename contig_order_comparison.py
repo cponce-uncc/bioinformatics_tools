@@ -1,3 +1,11 @@
+"""
+This program compares the order of contigs between two different files. To use the program, edit the variables that
+hold the file paths and edit the arguments passed to the get_common_contigs() function on line 96.
+
+Written by Cristian Ponce during Summer 2020 for the Cooper Lab (University of North Carolina, Charlotte)
+at the North Carolina Research Campus.
+"""
+
 import csv
 import difflib
 
