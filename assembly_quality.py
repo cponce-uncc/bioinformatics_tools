@@ -1,12 +1,14 @@
 """
-This program analyzes the quality of .fasta files and prints the results out. The analysis includes the following metrics:
+This program analyzes the quality of assembly files. The analysis includes the following metrics:
     - Number of contigs
     - BP count
     - Largest contig (BP)
     - N50, N90, L50, and L90 statistics
     - Individual base counts and ratios
 
-To use the program
+To use the program, add extensions of assembly files that you would like to target for analysis in the
+targeted_extensions.csv file.
+
 Written by Cristian Ponce during Summer 2020 for the Cooper Lab (University of North Carolina, Charlotte)
 at the North Carolina Research Campus.
 """
@@ -71,6 +73,7 @@ def analyze_quality(file_path):
     n90 = 0
     l50 = 0
     l90 = 0
+
 
     for contig in contig_sizes:
         contig_count += contig
@@ -139,7 +142,7 @@ def graph_contig_sizes(file_path, graph_type='bar'):
 if __name__ == "__main__":
 
     # Get targeted files through targeted_extensions.csv file
-    targeted_files = {'.pseudomol': 'MUMmer'}
+    targeted_files = {'.contigs.fasta': 'MUMmer'}
 
     # Analyze each file in the .csv file
     for extension in targeted_files.keys():
