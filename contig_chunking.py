@@ -1,7 +1,8 @@
 """
-This program processes MUMmer .coords files. It will take the best hit (based on query coverage %) for each contig,
-and then sort the data by chromosome starting position (S1 column), and output the results as a .csv containing
-the contig ID, chromosome starting position, and chromosome number of the hit.
+This program processes MUMmer .coords files. It will attempt to find clusters of hits for each contig to obtain
+positional data (S1, E1). If no cluster is available, the program will find the hit with the best query coverage to
+obtain the positional data. This is the second approach to accurately extracting positional data from the results of
+pairwise alignment (.coords file).
 
 Written by Cristian Ponce during Summer 2020 for the Cooper Lab (University of North Carolina, Charlotte)
 at the North Carolina Research Campus.
@@ -9,29 +10,31 @@ at the North Carolina Research Campus.
 from Bio import SeqIO
 import csv
 import statistics
-import numpy as np
+import matplotlib.pyplot as plt
 
 
-def reject_outliers(data, m=2):
-    
-    return data[abs(data - np.mean(data)) < m * np.std(data)]
+def reject_outliers(data, percentage=10):
+    data.sort()  # Sort dataset (ascending)
 
+    # Determine how many entries to remove from dataset
+    data_size = len(data)
+    shave_amount_left = (data_size / 100) * percentage
+    shave_amount_right = data_size - shave_amount_left
 
-def get_assembly_contigs(file_path):
-    contig_names = []  # Holds all contig names
+    # Remove disqualifying data
+    new_data = []
+    for entry in data:
+        if ((data.index(entry) + 1) > shave_amount_left) and ((data.index(entry) + 1) < shave_amount_right):
+            new_data.append(entry)
 
-    for record in SeqIO.parse(file_path, "fasta"):  # Iterate through each contig in the file
-        contig_names.append(record.id)  # Add contig name to list
-
-    return set(contig_names)  # Return set of contig names to remove redundant entries
-
+    return new_data
 
 def eliminate_blank_data(coordinate_list, index=1):
-    if index == 1:
+    if index == 1:  # Extracts first entry in list of data
         for item in coordinate_list:
             if item != '':
                 return item
-    if index == 2:
+    if index == 2:  # Extracts second entry in list of data
         counter = 0
         for item in coordinate_list:
             if item != '':
@@ -40,11 +43,12 @@ def eliminate_blank_data(coordinate_list, index=1):
                     return item
 
 
-def get_coords_info(file_path, threshold=0.0):
+def get_chunked_coords_info(file_path):
     file = open(file_path, 'rt')
     line_no = 0
     all_query_hits = []
     hits_by_contig = {}
+    chunked_contig_data = {}
 
     for line in file:  # Iterate through every line in the file
 
@@ -57,26 +61,6 @@ def get_coords_info(file_path, threshold=0.0):
                 .replace('\n', ' ') \
                 .strip()
 
-            # Get query coverage for each hit
-            query_coverage = separated_contents[5].split('   ')[2].strip()
-
-            # Query length
-            seq_lengths = separated_contents[4].split(' ')
-            #print(seq_lengths)
-
-            x = 0
-            query_length = 0
-            for entry in seq_lengths:
-                if entry.strip().isnumeric():
-                    x += 1
-                if (x == 2) and entry.strip().isnumeric():
-                    query_length = int(entry.strip())
-
-            # print(query_length)
-
-            # Calculate nucleotide coverage
-            nucleotide_coverage = query_length * (float(query_coverage) / 100)
-
             # Get S1data from .coords file
             s1_data = eliminate_blank_data(separated_contents[0].split(' '))
 
@@ -86,13 +70,15 @@ def get_coords_info(file_path, threshold=0.0):
 
             e2_data = eliminate_blank_data(separated_contents[1].split(' '), 2)
 
-            # Get chromosome tag (RESOLVE ISSUE DURING CALL)
+            query_coverage = separated_contents[5].split('   ')[2].strip()
+
+            # Get chromosome tag
             if '_' in separated_contents[6]:
                 chromosome_num = separated_contents[6] \
                     .split('\t')[0] \
                     .split('_')[1]
 
-            else:  # Work here
+            else:
                 chromosome_num = separated_contents[6] \
                     .split(' ')[1] \
                     .split('\t')[0] \
@@ -101,24 +87,18 @@ def get_coords_info(file_path, threshold=0.0):
                 if chromosome_num.isnumeric() and (int(chromosome_num) != 10):
                     chromosome_num = chromosome_num.replace('0', '')
 
-                #print(f'num {chromosome_num} end')
-
-            # coordinate_info.append([s1_data, chromosome_num])
-
             if chromosome_num.isnumeric():
-                all_query_hits.append([contig_name, s1_data, e1_data, s2_data, e2_data, chromosome_num])
+                all_query_hits.append([contig_name, s1_data, e1_data, s2_data, e2_data, chromosome_num, query_coverage])
 
         line_no += 1  # Iterate line counter
 
     for entry in all_query_hits:
-
         hits_by_contig.update({entry[0]: []})
 
     for entry in all_query_hits:
-            print('test', entry[1:6])
-            current_data = hits_by_contig.get(str(entry[0]))
-            current_data.append(entry[1:6])
-            hits_by_contig.update({entry[0]: current_data})
+        current_data = hits_by_contig.get(str(entry[0]))
+        current_data.append(entry[1:7])
+        hits_by_contig.update({entry[0]: current_data})
 
     # Filter contigs by number of hits and chromosome concentration
     disqualified_contigs = []
@@ -128,12 +108,15 @@ def get_coords_info(file_path, threshold=0.0):
         if len(all_contig_hits) < min_hits:
             disqualified_contigs.append(contig)
 
+    # Create list of each contig before removal of disqualifying contigs
+    all_contig_ids = hits_by_contig.keys()
+
     # Remove each contig that did not meet the specifications
     for contig in disqualified_contigs:
         hits_by_contig.pop(contig)
 
     # Iterate through each contig in the dictionary
-    for contig in hits_by_contig.keys():
+    for contig in all_contig_ids:
         all_contig_hits = hits_by_contig.get(contig)
 
         # Count occurrence of hits across all chromosomes
@@ -156,77 +139,113 @@ def get_coords_info(file_path, threshold=0.0):
         all_s2_data = []
 
         for entry in updated_contigs:
-            print("EBTW", entry)
-            all_s1_data.append(entry[0])
-            all_s2_data.append(entry[2])
+            all_s1_data.append(int(entry[0]))
+            all_s2_data.append(int(entry[2]))
 
-        print(all_s1_data, all_s2_data)
-
-        # Convert to numpy array
-        all_s1_data_array = np.asarray(all_s1_data)
-        all_s2_data_array = np.asarray(all_s2_data)
+        # Shows plots for a select contig before data filtering
+        if contig == "tig00000009":
+            plt.hist(all_s1_data)
+            plt.title("Starting position distribution before filtering for tig00000009")
+            plt.show()
 
         # Remove outlier from data
-        reject_outliers(all_s1_data_array, 2)
-        reject_outliers(all_s2_data_array, 2)
+        filtered_s1_data = reject_outliers(all_s1_data)
+        filtered_s2_data = reject_outliers(all_s2_data)
 
-        print(all_s1_data_array)
-
+        # Shows plots for a select contig after data filtering
+        if contig == "tig00000009":
+            plt.hist(filtered_s1_data)
+            plt.title("Starting position distribution after filtering for tig00000009")
+            plt.show()
 
         # Sort contigs by s1 data
         sorted_contigs = (sorted(updated_contigs, key=lambda x: (float(x[0]))))
 
-        # Update dictionary data
-        hits_by_contig.update({contig: sorted_contigs})
+        for entry in sorted_contigs:
+            s1_data, s2_data, e1_data, e2_data, chromosome_num, query_coverage = entry
+            if (s1_data in filtered_s1_data) and (s2_data in filtered_s2_data):
+                hits_by_contig.update({contig: entry})
+
+        # Total s1 data
+        filtered_data = hits_by_contig.get(contig)
+        total_s1 = filtered_data[0][0]
+        total_s2 = filtered_data[-1][1]
+        total_size = abs(int(total_s2) - int(total_s1))
+        chunked_contig_data.update({contig: [total_s1, total_s2, total_size, main_chromosome]})
+
+    return chunked_contig_data
 
 
-    print('final:', hits_by_contig)
-    return list(hits_by_contig)
+# Combine chunked contigs and non-chunked contigs
+def combine_best_hit_data(chunked_hit_dict, highest_query_file_path):
+    combined_data_dict = {}
+    # Open highest query coverage percentage file and write data to list
+    query_coverage_file = open(highest_query_file_path, "r")
+    query_data = []
 
+    for line in query_coverage_file:
+        content = line.replace("\n", "")\
+                        .split(",")
+        query_data.append([content[0], content[2], content[3]])
 
-def update_best_hits(best_hits, linkage_file_path):
-    # Import linkage map file
-    linkage_coordinate_info = []
-    with open(linkage_file_path, 'r') as file:
-        for line in file:
-            linkage_coordinate_info.append(line)
+    # Get each contig id
+    contig_ids = []
+    for entry in query_data:
+        contig_ids.append(entry[0])
 
-    # Override best hits file
-    for entry in linkage_coordinate_info:
-        contig_name, query_coverage, s1_data, chromosome_num = entry.split(',')
-        best_hits.update({contig_name: [float(query_coverage), int(s1_data), int(chromosome_num)]})
+    # Convert chunked hit data to a list
+    chunked_hit_list = []
+    for contig in chunked_hit_dict.keys():
+        contig_data = chunked_hit_dict.get(contig)
+        chunked_hit_list.append([contig, contig_data[0], contig_data[3]])
 
-        return best_hits
+    for entry in query_data:
+        combined_data_dict.update({entry[0]: [entry[1], entry[2]]})
 
+    # Overwrite contigs represented in chunked hit list with chunked data
+    for entry in chunked_hit_list:
+        combined_data_dict.update({entry[0]: [entry[1], entry[2]]})
 
-def sort_best_hit_data(best_hit_data):
-    best_hit_contigs = list(best_hit_data.keys())
-    best_hit_positions = list(best_hit_data.values())
-    all_data = []
-    index = 0
+    # Convert combined data back into list
+    combined_data_list = []
+    for contig in combined_data_dict.keys():
+        contig_data = combined_data_dict.get(contig)
+        combined_data_list.append([contig, contig_data[0], contig_data[1]])
 
-    while index < len(best_hit_contigs):
-        all_data.append([best_hit_contigs[index], best_hit_positions[index][0], best_hit_positions[index][1], best_hit_positions[index][2]])
-        index += 1
-
-    sorted_data = sorted(all_data, key=lambda x: (float(x[3]), float(x[2])))
+    sorted_data = sorted(combined_data_list, key=lambda x: (float(x[2]), float(x[1])))
 
     return sorted_data
 
 
 def create_csv(new_file_name, contig_data):
-    print('your data', contig_data)
-    with open(new_file_name, 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Contig Name", "% Query Coverage"])
+    # Converts data to list and then writes, if variable passed to function is a dict
+    if isinstance(contig_data, dict):
+        contig_data_list = []
+        for contig in contig_data.keys():
+            data = contig_data.get(contig)
+            contig_data_list.append([contig, data[0], data[1], data[2], data[3]])
 
-        for entry in contig_data:
-            print('entry: ', entry)
-            writer.writerow(entry)
+        with open(new_file_name, 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Contig Name", "% Query Coverage"])
 
-        file.close()
+            for entry in contig_data_list:
+                writer.writerow(entry)
+
+            file.close()
+
+    # Writes data normally if variable is a list
+    else:
+        with open(new_file_name, 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Contig Name", "% Query Coverage"])
+
+            for entry in contig_data:
+                writer.writerow(entry)
+
+            file.close()
 
 
-filtered_results = get_coords_info('ChineseAmber.coords')
-# create_csv('second_approach_contigs.csv', filtered_results)
-
+chunked_results = get_chunked_coords_info('ChineseAmber.coords')
+combined_data = combine_best_hit_data(chunked_results, "ChineseAmber_sorted_query_coverage.csv")
+create_csv('chunked_contigs_only.csv', combined_data)
