@@ -7,10 +7,14 @@ pairwise alignment (.coords file).
 Written by Cristian Ponce during Summer 2020 for the Cooper Lab (University of North Carolina, Charlotte)
 at the North Carolina Research Campus.
 """
-from Bio import SeqIO
 import csv
 import statistics
 import matplotlib.pyplot as plt
+
+# EDIT THESE VARIABLE
+line_file = "ChineseAmber.coords"  # Change to local file path of the .coords file of the line
+best_hit_file = "ChineseAmber_best_qc_hits.csv"  # Change to local file path of coordinate_data_processing.py output
+output_file = "ChineseAmber_updated_contigs.csv"  # Change to desired name of updated contigs file
 
 
 def reject_outliers(data, percentage=10):
@@ -28,6 +32,7 @@ def reject_outliers(data, percentage=10):
             new_data.append(entry)
 
     return new_data
+
 
 def eliminate_blank_data(coordinate_list, index=1):
     if index == 1:  # Extracts first entry in list of data
@@ -186,6 +191,7 @@ def combine_best_hit_data(chunked_hit_dict, highest_query_file_path):
     for line in query_coverage_file:
         content = line.replace("\n", "")\
                         .split(",")
+        print(content)
         query_data.append([content[0], content[2], content[3]])
 
     # Get each contig id
@@ -246,6 +252,6 @@ def create_csv(new_file_name, contig_data):
             file.close()
 
 
-chunked_results = get_chunked_coords_info('ChineseAmber.coords')
-combined_data = combine_best_hit_data(chunked_results, "ChineseAmber_sorted_query_coverage.csv")
-create_csv('chunked_contigs_only.csv', combined_data)
+chunked_results = get_chunked_coords_info(line_file)
+combined_data = combine_best_hit_data(chunked_results, best_hit_file)
+create_csv(output_file, combined_data)

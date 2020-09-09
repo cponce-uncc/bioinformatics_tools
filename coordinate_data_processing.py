@@ -13,6 +13,9 @@ TASK LIST:
 from Bio import SeqIO
 import csv
 
+line_file = "ChineseAmber.coords"  # Change to local file path for .coords file of the line
+output_file = "ChineseAmber_best_qc_hits.csv"  # Change to desired name for output file (Best query coverage % hits)
+
 
 def get_assembly_contigs(file_path):
     contig_names = []  # Holds all contig names
@@ -118,20 +121,6 @@ def get_coords_info(file_path, threshold=0.0):
     return best_hits
 
 
-def update_best_hits(best_hits, linkage_file_path):
-    # Import linkage map file
-    linkage_coordinate_info = []
-    with open(linkage_file_path, 'r') as file:
-        for line in file:
-            linkage_coordinate_info.append(line)
-
-    # Override best hits file
-    for entry in linkage_coordinate_info:
-        contig_name, query_coverage, s1_data, chromosome_num = entry.split(',')
-        best_hits.update({contig_name: [float(query_coverage), int(s1_data), int(chromosome_num)]})
-
-        return best_hits
-
 
 def sort_best_hit_data(best_hit_data):
     best_hit_contigs = list(best_hit_data.keys())
@@ -152,7 +141,6 @@ def create_csv(new_file_name, contig_data):
     print('your data', contig_data)
     with open(new_file_name, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(["Contig Name", "% Query Coverage"])
 
         for entry in contig_data:
             print(entry)
@@ -161,8 +149,6 @@ def create_csv(new_file_name, contig_data):
         file.close()
 
 
-filtered_results = get_coords_info('ChineseAmber.coords')
-# updated_results = update_best_hits(filtered_results, 'linkage_map_s1_data.csv')
+filtered_results = get_coords_info(line_file)
 sorted_coords = sort_best_hit_data(filtered_results)
-print(sorted_coords)
-create_csv('ChineseAmber_sorted_query_coverage.csv', sorted_coords)
+create_csv(output_file, sorted_coords)
