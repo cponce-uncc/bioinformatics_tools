@@ -53,7 +53,7 @@ def get_chunked_coords_info(file_path):
     line_no = 0
     all_query_hits = []
     hits_by_contig = {}
-    chunked_contig_data = {}
+    filtered_data = {}
 
     for line in file:  # Iterate through every line in the file
 
@@ -157,28 +157,13 @@ def get_chunked_coords_info(file_path):
         filtered_s1_data = reject_outliers(all_s1_data)
         filtered_s2_data = reject_outliers(all_s2_data)
 
-        # Shows plots for a select contig after data filtering
-        if contig == "tig00000009":
-            plt.hist(filtered_s1_data)
-            plt.title("Starting position distribution after filtering for tig00000009")
-            plt.show()
+        # Get important information from filtered data
+        first_s1 = int(filtered_s1_data[0])
+        last_s2 = int(filtered_s2_data[-1])
+        total_size = abs(last_s2 - first_s1)
+        filtered_data.update({contig: [first_s1, last_s2, total_size, main_chromosome]})
 
-        # Sort contigs by s1 data
-        sorted_contigs = (sorted(updated_contigs, key=lambda x: (float(x[0]))))
-
-        for entry in sorted_contigs:
-            s1_data, s2_data, e1_data, e2_data, chromosome_num, query_coverage = entry
-            if (s1_data in filtered_s1_data) and (s2_data in filtered_s2_data):
-                hits_by_contig.update({contig: entry})
-
-        # Total s1 data
-        filtered_data = hits_by_contig.get(contig)
-        total_s1 = filtered_data[0][0]
-        total_s2 = filtered_data[-1][1]
-        total_size = abs(int(total_s2) - int(total_s1))
-        chunked_contig_data.update({contig: [total_s1, total_s2, total_size, main_chromosome]})
-
-    return chunked_contig_data
+    return filtered_data
 
 
 # Combine chunked contigs and non-chunked contigs
@@ -191,7 +176,7 @@ def combine_best_hit_data(chunked_hit_dict, highest_query_file_path):
     for line in query_coverage_file:
         content = line.replace("\n", "")\
                         .split(",")
-        print(content)
+        # print(content)
         query_data.append([content[0], content[2], content[3]])
 
     # Get each contig id
@@ -253,5 +238,7 @@ def create_csv(new_file_name, contig_data):
 
 
 chunked_results = get_chunked_coords_info(line_file)
+print(chunked_results)
 combined_data = combine_best_hit_data(chunked_results, best_hit_file)
+print(combined_data)
 create_csv(output_file, combined_data)
